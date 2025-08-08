@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1] - 2025-08-15
+
+### Added
+
+- Better PyPI metadata
+- MIT license
+
 ## [1.0.0] - 2025-08-08
 
 ### Added

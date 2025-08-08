@@ -1,15 +1,27 @@
 [project]
 name = "uv-outdated"
-version = "1.0.0"
+version = "1.0.1"
 description = "Show uv outdated packages in a nicer way"
+authors = [{ name = "Simon Percivall"}]
 readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+keywords = [
+  "requirements",
+  "packaging",
+]
+
 dependencies = [
   "packaging>=25.0",
   "pydantic>=2.11.7",
   "rich>=14.1.0",
   "typer>=0.16.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/simonpercivall/uv-outdated"
+Changelog = "https://github.com/simonpercivall/uv-outdated/blob/main/CHANGELOG.md"
+Releases = "https://github.com/simonpercivall/uv-outdated/releases"
 
 [project.scripts]
 uv-outdated = "uv_outdated.__main__:app"
