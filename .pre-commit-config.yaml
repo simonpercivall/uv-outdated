@@ -1,0 +1,28 @@
+default_install_hook_types:
+  [pre-commit, pre-push, prepare-commit-msg, commit-msg, post-checkout, post-merge, post-rewrite]
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.12.7
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+        args: [--diff]
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.8.5
+    hooks:
+      - id: uv-lock
+        args: ["--locked"]
+      - id: uv-sync
+        args: ["--locked", "--inexact"]
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        description: Run `mypy` on Eketorp
+        entry: uv run mypy .
+        language: system
+        pass_filenames: false
+        files: (.*.py|uv\.lock)$
+        stages: ["pre-commit"]
