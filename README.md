@@ -7,18 +7,12 @@ While `uv pip list --outdated` shows which packages have newer versions availabl
 `uv-outdated` adds useful context like dependency relationships, constraint information,
 and organizes output by dependency groups.
 
-## Installation
-
-```bash
-pip install uv-outdated
-```
-
 ## Usage
 
 Run in any directory with a `uv.lock` file:
 
 ```bash
-uv-outdated
+uvx uv-outdated [OPTIONS]
 ```
 
 ### Options
