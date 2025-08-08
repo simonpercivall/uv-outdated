@@ -1,0 +1,20 @@
+[settings]
+python.uv_venv_auto = true
+
+[tasks.pytest]
+run = "pytest"
+
+[tasks."ruff:check"]
+dir = "{{config_root}}"
+run = "ruff check ."
+
+[tasks."ruff:format"]
+dir = "{{config_root}}"
+run = "ruff format --diff ."
+
+[tasks."mypy"]
+dir = "{{config_root}}"
+run = "mypy ."
+
+[tasks.lint]
+depends = ["ruff:check", "ruff:format", "mypy"]
