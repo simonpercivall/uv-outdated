@@ -1,15 +1,21 @@
 # Changelog
 
+## [1.0.2] - 2025-08-22
+
+### Documentation
+
+- Let the README suggest using `uvx` for running the command.
+
 ## [1.0.1] - 2025-08-15
 
-### Added
+### Documentation
 
 - Better PyPI metadata
 - MIT license
 
 ## [1.0.0] - 2025-08-08
 
-### Added
+### Features
 
 - Initial release of `uv-outdated`.
 - Scans `uv.lock` and `pyproject.toml` to find outdated dependencies.

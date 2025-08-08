@@ -1,6 +1,6 @@
 [project]
 name = "uv-outdated"
-version = "1.0.1"
+version = "1.0.2"
 description = "Show uv outdated packages in a nicer way"
 authors = [{ name = "Simon Percivall"}]
 readme = "README.md"
