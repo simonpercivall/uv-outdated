@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3] - 2025-12-08
+
+### Bug Fix
+
+- Fix issue where a transitive dependency "Latest" was shown as yellow where the upper
+  constraint was the same as the latest and current version. Now it is not shown.
+
 ## [1.0.2] - 2025-08-22
 
 ### Documentation

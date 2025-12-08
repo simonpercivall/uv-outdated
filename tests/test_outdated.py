@@ -25,6 +25,9 @@ from uv_outdated.utils import (
     Name,
 )
 
+# Additional imports for row-building and collection
+from uv_outdated.__main__ import _create_package_row, collect_outdated_packages
+
 
 class TestOutdatedScript(unittest.TestCase):
     @patch("uv_outdated.utils.get_all_metadata_from_site_packages")
@@ -695,3 +698,94 @@ class TestOutdatedScript(unittest.TestCase):
         self.assertTrue(is_locked_by_specifier(specifiers, "django", "5.2.0"))
         self.assertFalse(is_locked_by_specifier(specifiers, "django", "5.0.9"))
         self.assertFalse(is_locked_by_specifier(specifiers, "requests", "2.32.0"))
+
+    # --- Added targeted tests ---
+    def make_pkg(self, name: str, version: str) -> Package:
+        return Package(name=name, version=version, summary="", requires={}, dependents=[])
+
+    def test_color_yellow_only_when_current_allowed_latest_blocked(self):
+        name = "demo"
+        pkg = self.make_pkg(name, "1.5.0")
+        outdated = OutdatedPkg(name=name, version=pkg.version, latest_version="2.1.0")
+        specifiers = {name: ">=1,<2"}
+        row = _create_package_row(
+            name=name,
+            pkg=pkg,
+            outdated_pkg=outdated,
+            is_direct=True,
+            specifiers=specifiers,
+            show_why=True,
+            name_format="{name}",
+        )
+        self.assertIn("[yellow]2.1.0[/yellow]", row[2])
+        self.assertEqual(row[3], ">=1,<2")
+
+    def test_color_red_when_both_current_and_latest_disallowed(self):
+        name = "demo"
+        pkg = self.make_pkg(name, "1.6.0")
+        outdated = OutdatedPkg(name=name, version=pkg.version, latest_version="2.0.0")
+        specifiers = {name: "<=1.5"}
+        row = _create_package_row(
+            name=name,
+            pkg=pkg,
+            outdated_pkg=outdated,
+            is_direct=True,
+            specifiers=specifiers,
+            show_why=True,
+            name_format="{name}",
+        )
+        self.assertIn("[red]2.0.0[/red]", row[2])
+        self.assertEqual(row[3], "")
+
+    def test_color_red_when_both_allowed(self):
+        name = "demo"
+        pkg = self.make_pkg(name, "1.5.0")
+        outdated = OutdatedPkg(name=name, version=pkg.version, latest_version="2.0.0")
+        specifiers = {name: ">=1"}
+        row = _create_package_row(
+            name=name,
+            pkg=pkg,
+            outdated_pkg=outdated,
+            is_direct=False,
+            specifiers=specifiers,
+            show_why=True,
+            name_format="{name}",
+        )
+        self.assertIn("[red]2.0.0[/red]", row[2])
+        self.assertEqual(row[3], "")
+
+    def test_color_red_when_no_specifier(self):
+        name = "demo"
+        pkg = self.make_pkg(name, "1.0.0")
+        outdated = OutdatedPkg(name=name, version=pkg.version, latest_version="1.1.0")
+        specifiers = {}
+        row = _create_package_row(
+            name=name,
+            pkg=pkg,
+            outdated_pkg=outdated,
+            is_direct=True,
+            specifiers=specifiers,
+            show_why=True,
+            name_format="{name}",
+        )
+        self.assertIn("[red]1.1.0[/red]", row[2])
+
+    def test_collect_outdated_filters_equal_latest_and_current(self):
+        packages = {
+            "a": self.make_pkg("a", "1.0.0"),
+            "b": self.make_pkg("b", "2.0.0"),
+        }
+        outdated = {
+            "a": OutdatedPkg(name="a", version="1.0.0", latest_version="1.1.0"),
+            "b": OutdatedPkg(name="b", version="2.0.0", latest_version="2.0.0"),
+        }
+        direct = {"a": object(), "b": object()}
+        collected = collect_outdated_packages(
+            packages=packages,
+            outdated=outdated,
+            direct=direct,
+            direct_only=False,
+            transitive_only=False,
+        )
+        names = [name for name, *_ in collected]
+        self.assertEqual(names, ["a"])

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import typing
-from typing import Annotated
+from typing import Annotated, Mapping
 
 import typer
 from rich.console import Console
 from rich.table import Table, box
+from packaging.specifiers import SpecifierSet, InvalidSpecifier
 
 from uv_outdated.utils import (
     Package,
@@ -13,7 +14,6 @@ from uv_outdated.utils import (
     get_locked_packages_and_deps,
     get_direct_dependencies,
     get_package_specifiers,
-    is_locked_by_specifier,
     find_direct_ancestors,
     group_packages_by_dependency_groups,
     OutdatedPkg,
@@ -76,18 +76,13 @@ def cli(
     specifiers = get_package_specifiers(packages)
 
     # Collect all outdated packages that match our filters
-    outdated_packages = []
-    for name, pkg in packages.items():
-        if name not in outdated:
-            continue
-        outdated_pkg = outdated[name]
-        is_direct = name in direct
-        if direct_only and not is_direct:
-            continue
-        if transitive_only and is_direct:
-            continue
-
-        outdated_packages.append((name, pkg, outdated_pkg, is_direct))
+    outdated_packages = collect_outdated_packages(
+        packages=packages,
+        outdated=outdated,
+        direct=direct,
+        direct_only=direct_only,
+        transitive_only=transitive_only,
+    )
 
     # Handle case where no outdated packages are found
     if not outdated_packages:
@@ -266,6 +261,32 @@ def generate_grouped_rows(
                 )
 
 
+def collect_outdated_packages(
+    *,
+    packages: dict[Name, Package],
+    outdated: dict[Name, OutdatedPkg],
+    direct: Mapping[str, object],
+    direct_only: bool,
+    transitive_only: bool,
+) -> list[tuple[Name, Package, OutdatedPkg, bool]]:
+    """Collect outdated packages with filtering and hide entries where latest == current."""
+    collected: list[tuple[Name, Package, OutdatedPkg, bool]] = []
+    for name, pkg in packages.items():
+        if name not in outdated:
+            continue
+        outdated_pkg = outdated[name]
+        # Skip if latest equals current; nothing to show
+        if outdated_pkg.latest_version == pkg.version:
+            continue
+        is_direct = name in direct
+        if direct_only and not is_direct:
+            continue
+        if transitive_only and is_direct:
+            continue
+        collected.append((name, pkg, outdated_pkg, is_direct))
+    return collected
+
+
 def _create_package_row(
     name: Name,
     pkg: Package,
@@ -279,12 +300,27 @@ def _create_package_row(
     latest = outdated_pkg.latest_version
     constraint = ""
     if latest != pkg.version:
-        if is_locked_by_specifier(specifiers, name, latest):
-            latest_colored = f"[yellow]{latest}[/yellow]"
-            constraint = specifiers.get(name, "")
+        # Consider a package as "constrained" (yellow) only when the current version
+        # is allowed by the specifier but the latest version is NOT allowed.
+        spec = specifiers.get(name)
+        if spec:
+            try:
+                spec_set = SpecifierSet(spec)
+                current_allowed = spec_set.contains(pkg.version)
+                latest_allowed = spec_set.contains(latest)
+                if current_allowed and not latest_allowed:
+                    latest_colored = f"[yellow]{latest}[/yellow]"
+                    constraint = spec
+                else:
+                    latest_colored = f"[red]{latest}[/red]"
+            except InvalidSpecifier:
+                latest_colored = f"[red]{latest}[/red]"
         else:
             latest_colored = f"[red]{latest}[/red]"
     else:
+        # If latest equals current, this entry should normally not appear (uv wouldn't
+        # report it as outdated). Keep a neutral/yellow display to avoid implying an
+        # upgrade path.
         latest_colored = f"[yellow]{latest}[/yellow]"
 
     parents = {dep.package.name for dep in pkg.dependents}
