@@ -272,6 +272,13 @@ def collect_outdated_packages(
     """Collect outdated packages with filtering and hide entries where latest == current."""
     collected: list[tuple[Name, Package, OutdatedPkg, bool]] = []
     for name, pkg in packages.items():
+        # Some local/workspace/editable packages (including the root project) may not
+        # have a statically known version when using dynamic versioning.
+        # See PEP 621 (Project metadata in pyproject.toml) which allows
+        # `dynamic = ["version"]`.
+        if not pkg.version:
+            continue
+
         if name not in outdated:
             continue
         outdated_pkg = outdated[name]

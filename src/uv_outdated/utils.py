@@ -43,6 +43,7 @@ class DependencyGroup:
 class Package:
     name: Name
     version: VersionStr
+    dynamic_version: bool = False
     summary: str = ""
     requires: dict[str, DependencyGroup] = field(default_factory=dict)
     dependents: list[Dependent] = field(default_factory=list)
@@ -273,6 +274,19 @@ def get_locked_packages_and_deps() -> dict[Name, Package]:
         # Site-packages may not be available if project isn't installed
         site_metadata_by_name = {}
 
+    # Determine whether the project version is declared as dynamic.
+    # This is allowed by PEP 621 via `project.dynamic = ["version"]`.
+    # We don't currently change behavior based on this, but keeping the flag
+    # makes it easy to add future logging/debug output.
+    project_version_is_dynamic = False
+    try:
+        with Path("pyproject.toml").open("rb") as f:
+            pyproject = tomllib.load(f)
+        project_dynamic = pyproject.get("project", {}).get("dynamic", [])
+        project_version_is_dynamic = "version" in project_dynamic
+    except (FileNotFoundError, tomllib.TOMLDecodeError):
+        project_version_is_dynamic = False
+
     # Step 2: Process each package in uv.lock
     for pkg_data in uv_lock.get("package", []):
         name = canonicalize_name(pkg_data["name"])
@@ -282,10 +296,26 @@ def get_locked_packages_and_deps() -> dict[Name, Package]:
         if name in site_metadata_by_name:
             summary = site_metadata_by_name[name].summary
 
+        # Determine version.
+        #
+        # For most resolved packages, uv.lock contains an exact "version".
+        # However, local/workspace/editable packages (including the root project
+        # when using dynamic versioning; see PEP 621 which allows
+        # `dynamic = ["version"]`) may omit "version". In that case we fall
+        # back to site-packages metadata if available, otherwise we treat the
+        # version as unknown (empty string).
+        version = pkg_data.get("version")
+        if version is None:
+            site_meta = site_metadata_by_name.get(name)
+            version = site_meta.version if site_meta else ""
+
         # Create Package object
         package = Package(
             name=name,
-            version=pkg_data["version"],
+            version=version,
+            # If the project uses a dynamic version (PEP 621), the version may not
+            # be available. This is a no-op addition for potential future logging.
+            dynamic_version=project_version_is_dynamic,
             summary=summary,
         )
         packages[name] = package
