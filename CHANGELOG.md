@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4] - 2025-12-25
+
+### Bug Fix
+
+- Handle missing/dynamic version field in pyproject.toml
+  (_cf._ [Declaring project metadata: the [project] table](https://packaging.python.org/en/latest/specifications/pyproject-toml/#declaring-project-metadata-the-project-table)).
+
 ## [1.0.3] - 2025-12-08
 
 ### Bug Fix
