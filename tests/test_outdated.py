@@ -670,6 +670,63 @@ class TestOutdatedScript(unittest.TestCase):
             self.assertIsInstance(pkg.version, str)
             self.assertEqual(pkg.summary, "")  # Should be empty without site-packages
 
+    @patch("uv_outdated.utils.get_all_metadata_from_site_packages")
+    def test_local_editable_package_without_version_is_empty_string(self, mock_site_packages):
+        """If no site metadata exists, missing uv.lock version becomes empty string."""
+        mock_site_packages.return_value = {}
+
+        uv_lock = {
+            "package": [
+                {
+                    "name": "my-local-pkg",
+                    "source": {"editable": "."},
+                    # intentionally no "version"
+                    "dependencies": [],
+                }
+            ]
+        }
+
+        with patch("uv_outdated.utils.tomllib.load", return_value=uv_lock):
+            packages = get_locked_packages_and_deps()
+
+        self.assertIn("my-local-pkg", packages)
+        self.assertEqual(packages["my-local-pkg"].version, "")
+
+    @patch("uv_outdated.utils.get_all_metadata_from_site_packages")
+    def test_local_editable_package_without_version_uses_site_metadata(self, mock_site_packages):
+        """If site metadata exists, missing uv.lock version falls back to it."""
+        mock_dist = MagicMock()
+        mock_dist.__class__ = importlib.metadata.PathDistribution  # type: ignore[assignment]
+
+        mock_site_packages.return_value = {
+            "my-local-pkg": SitePackage(
+                name="my-local-pkg",
+                version="9.9.9",
+                summary="Local package",
+                requires_dist=[],
+                provides_extra=[],
+                distribution=mock_dist,
+            )
+        }
+
+        uv_lock = {
+            "package": [
+                {
+                    "name": "my-local-pkg",
+                    "source": {"editable": "."},
+                    # intentionally no "version"
+                    "dependencies": [],
+                }
+            ]
+        }
+
+        with patch("uv_outdated.utils.tomllib.load", return_value=uv_lock):
+            packages = get_locked_packages_and_deps()
+
+        self.assertIn("my-local-pkg", packages)
+        self.assertEqual(packages["my-local-pkg"].version, "9.9.9")
+        self.assertEqual(packages["my-local-pkg"].summary, "Local package")
+
     @patch("uv_outdated.utils.get_uv_outdated")
     def test_get_uv_outdated_mocked(self, mock_outdated):
         """Test get_uv_outdated with mocked uv output."""
